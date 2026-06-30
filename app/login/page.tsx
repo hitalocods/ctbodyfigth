@@ -31,13 +31,12 @@ export default function LoginPage() {
   return (
     <main className="min-h-[100dvh] px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col justify-center">
-        <section className="rounded-3xl border border-gold-200/10 bg-white/5 p-5 shadow-glow backdrop-blur-sm sm:p-8">
+        <section className="rounded-3xl border border-gold-200/10 bg-white/5 p-4 shadow-glow backdrop-blur-sm sm:p-8">
           <div className="mb-6 text-center sm:mb-8">
-            <p className="text-xs font-medium tracking-[0.3em] text-gold-200/90 sm:text-sm sm:tracking-[0.4em]">CT BODY FIGHT</p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:mt-3 sm:text-3xl">
+            <p className="text-xs font-medium tracking-[0.2em] text-gold-200/90 sm:text-sm sm:tracking-[0.4em]">CT BODY FIGHT</p>
+            <h1 className="mt-2 text-xl font-semibold tracking-tight text-white sm:mt-3 sm:text-3xl">
               Acesso ao sistema
             </h1>
-            <p className="mt-1 text-xs text-white/60 sm:mt-2 sm:text-sm">Base visual minimalista para entrada de usuários.</p>
           </div>
 
           <form className="space-y-4 pb-[env(safe-area-inset-bottom)]" onSubmit={handleSubmit}>

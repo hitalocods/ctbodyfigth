@@ -17,6 +17,7 @@ import {
   Plus,
   Search,
   Snowflake,
+  Trophy,
   Trash2,
   Wallet,
 } from "lucide-react";
@@ -37,6 +38,7 @@ type Student = {
   lastPaymentDate: string;
   nextDueDate: string;
   status: StudentStatus;
+  isCompetitor?: boolean;
   createdAt?: unknown;
   frozenAt?: string | null;
   frozenDaysRemaining?: number;
@@ -52,6 +54,7 @@ type StudentForm = {
   lastPaymentDate: string;
   nextDueDate: string;
   status: StudentStatus;
+  isCompetitor: boolean;
 };
 
 const filters: Filter[] = ["Todos", "Ativos", "Vencidos", "Congelados"];
@@ -64,6 +67,7 @@ const blankForm: StudentForm = {
   lastPaymentDate: "",
   nextDueDate: "",
   status: "ativo",
+  isCompetitor: false,
 };
 
 const statusLabel: Record<StudentStatus, string> = {
@@ -112,6 +116,22 @@ function computeStatus(student: Student): StudentStatus {
   return dueDate < normalizeToday() ? "vencido" : "ativo";
 }
 
+function isNearDueDate(student: Student): boolean {
+  if (computeStatus(student) !== "ativo") return false;
+  const dueDate = parseDate(student.nextDueDate);
+  if (!dueDate) return false;
+  const daysRemaining = diffDays(normalizeToday(), dueDate);
+  return daysRemaining <= 3;
+}
+
+function getCardStatusColor(student: Student): "active" | "warning" | "expired" | "frozen" {
+  const status = computeStatus(student);
+  if (status === "congelado") return "frozen";
+  if (status === "vencido") return "expired";
+  if (isNearDueDate(student)) return "warning";
+  return "active";
+}
+
 function overdueDays(student: Student) {
   if (computeStatus(student) !== "vencido") return 0;
   const dueDate = parseDate(student.nextDueDate);
@@ -121,7 +141,7 @@ function overdueDays(student: Student) {
 
 function whatsappLink(student: Student) {
   const message = encodeURIComponent(
-    `Olá ${student.name}, tudo bem? Passando para lembrar do pagamento da mensalidade do CT BODY FIGHT. Vencimento: ${student.nextDueDate}.`,
+    `Olá, ${student.name}!\n\nVerificamos que sua mensalidade do CT BODY FIGHT encontra-se vencida.\n\nPedimos que realize o pagamento para manter sua matrícula ativa.\n\nCaso o pagamento já tenha sido efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`,
   );
   const digits = student.whatsapp.replace(/\D/g, "");
   return `https://wa.me/55${digits}?text=${message}`;
@@ -139,6 +159,7 @@ export default function AlunosPage() {
   const [freezeTarget, setFreezeTarget] = useState<Student | null>(null);
   const [resumeTarget, setResumeTarget] = useState<Student | null>(null);
   const [form, setForm] = useState<StudentForm>(blankForm);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   async function loadStudents() {
     const snapshot = await getDocs(collection(db, "students"));
@@ -154,6 +175,7 @@ export default function AlunosPage() {
         lastPaymentDate: data.lastPaymentDate ?? "",
         nextDueDate: data.nextDueDate ?? "",
         status: (data.status ?? "ativo") as StudentStatus,
+        isCompetitor: data.isCompetitor ?? false,
         createdAt: data.createdAt,
         frozenAt: data.frozenAt ?? null,
         frozenDaysRemaining: data.frozenDaysRemaining,
@@ -213,6 +235,7 @@ export default function AlunosPage() {
       lastPaymentDate: student.lastPaymentDate,
       nextDueDate: student.nextDueDate,
       status: computeStatus(student),
+      isCompetitor: student.isCompetitor ?? false,
     });
   }
 
@@ -228,6 +251,7 @@ export default function AlunosPage() {
       lastPaymentDate: form.lastPaymentDate.trim(),
       nextDueDate: form.nextDueDate.trim(),
       status: form.status,
+      isCompetitor: form.isCompetitor,
       daysUsed: 0,
       frozenDaysRemaining: 0,
       frozenAt: null,
@@ -249,6 +273,7 @@ export default function AlunosPage() {
       lastPaymentDate: form.lastPaymentDate.trim(),
       nextDueDate: form.nextDueDate.trim(),
       status: form.status,
+      isCompetitor: form.isCompetitor,
     });
     setEditTarget(null);
     setForm(blankForm);
@@ -256,9 +281,10 @@ export default function AlunosPage() {
   }
 
   async function registerPayment(student: Student) {
-    const nextDue = addDays(new Date(), 30);
+    const dueDate = parseDate(student.nextDueDate);
+    if (!dueDate) return;
+    const nextDue = addDays(dueDate, 30);
     await updateDoc(doc(db, "students", student.id), {
-      lastPaymentDate: formatDate(new Date()),
       nextDueDate: formatDate(nextDue),
       status: "ativo",
     });
@@ -323,14 +349,19 @@ export default function AlunosPage() {
   return (
     <main className="min-h-[100dvh] px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-6xl flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-gold-200/10 py-4">
+        <header className="flex flex-col items-start justify-between gap-3 border-b border-gold-200/10 py-4 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium tracking-[0.3em] text-gold-200/90 sm:text-xs sm:tracking-[0.4em]">CT BODY FIGHT</p>
-            <h1 className="mt-1 text-xl font-semibold text-white sm:mt-2 sm:text-2xl">Alunos</h1>
+            <p className="text-xs font-medium tracking-[0.3em] text-gold-200/90 sm:text-xs sm:tracking-[0.4em]">CT BODY FIGHT</p>
+            <h1 className="mt-1 text-lg font-semibold text-white sm:mt-2 sm:text-2xl">Alunos</h1>
           </div>
-          <Button variant="secondary" size="sm" onClick={handleLogout} className="!h-8 !px-2 !py-1 !text-xs shrink-0">
-            Sair
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="secondary" size="sm" onClick={() => router.replace("/financeiro")} className="!h-8 !px-3 !py-1 !text-xs flex-1 sm:flex-none">
+              Financeiro
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleLogout} className="!h-8 !px-3 !py-1 !text-xs flex-1 sm:flex-none">
+              Sair
+            </Button>
+          </div>
         </header>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -356,40 +387,54 @@ export default function AlunosPage() {
             onChange={(event) => setQuery(event.target.value)}
             leadingIcon={<Search className="h-4 w-4" />}
           />
-          <div className="hidden sm:block">
-            <Button variant="secondary" className="min-w-40">
-              Filtros
-            </Button>
-          </div>
         </section>
 
         <section className="mt-5 flex flex-wrap gap-2">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setActiveFilter(filter)}
-              className={[
-                "rounded-full border px-4 py-2 text-sm font-medium transition",
-                activeFilter === filter
-                  ? "border-gold-300/30 bg-gold-300/12 text-gold-100"
-                  : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
-              ].join(" ")}
-            >
-              {filter}
-            </button>
-          ))}
+          {filters.map((filter) => {
+            const count = filter === "Todos"
+              ? totals.total
+              : filter === "Ativos"
+                ? totals.total - totals.vencidos - totals.congelados
+                : filter === "Vencidos"
+                  ? totals.vencidos
+                  : totals.congelados;
+            return (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setActiveFilter(filter)}
+                className={[
+                  "rounded-full border px-4 py-2 text-sm font-medium transition",
+                  activeFilter === filter
+                    ? "border-gold-300/30 bg-gold-300/12 text-gold-100"
+                    : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+              >
+                {filter} ({count})
+              </button>
+            );
+          })}
         </section>
 
-        <section className="mt-6 grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:grid-cols-2 xl:grid-cols-3">
+        <section className="mt-6 grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudents.map((student) => {
             const currentStatus = computeStatus(student);
             const overdue = overdueDays(student);
             return (
-              <Card key={student.id} className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-5">
+              <Card
+                key={student.id}
+                statusColor={getCardStatusColor(student)}
+                className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-5 cursor-pointer"
+                onClick={() => setExpandedCardId(expandedCardId === student.id ? null : student.id)}
+              >
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="break-words text-base font-semibold text-white sm:text-lg">{student.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="break-words text-base font-semibold text-white sm:text-lg">{student.name}</p>
+                      {student.isCompetitor && (
+                        <Trophy className="h-4 w-4 text-gold-300 shrink-0" />
+                      )}
+                    </div>
                     <p className="mt-1 break-words text-xs text-white/55 sm:text-sm">{student.modality}</p>
                   </div>
                   <StatusBadge className="shrink-0 text-[10px] sm:text-xs" status={currentStatus}>
@@ -397,89 +442,93 @@ export default function AlunosPage() {
                   </StatusBadge>
                 </div>
 
-                <div className="grid gap-1.5 border-t border-white/10 pt-3 text-xs sm:gap-2 sm:pt-4 sm:text-sm">
-                  <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                    <span className="text-white/55">WhatsApp</span>
-                    <span className="min-w-0 break-all text-right font-medium text-white">
-                      {student.whatsapp}
-                    </span>
-                  </div>
-                  <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                    <span className="text-white/55">Matrícula</span>
-                    <span className="shrink-0 text-right font-medium text-white">{student.enrollmentDate}</span>
-                  </div>
-                  <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                    <span className="text-white/55">Último pagamento</span>
-                    <span className="shrink-0 text-right font-medium text-white">{student.lastPaymentDate}</span>
-                  </div>
-                  <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                    <span className="text-white/55">Próximo vencimento</span>
-                    <span className="shrink-0 text-right font-medium text-white">{student.nextDueDate}</span>
-                  </div>
-                  <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                    <span className="text-white/55">Mensalidade</span>
-                    <span className="shrink-0 text-right font-medium text-white">{student.monthlyFee}</span>
-                  </div>
-                  {currentStatus === "vencido" ? (
-                    <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                      <span className="text-white/55">Dias em atraso</span>
-                      <span className="shrink-0 text-right font-medium text-status-expired">
-                        {overdue} dias
-                      </span>
+                {expandedCardId === student.id && (
+                  <>
+                    <div className="grid gap-1.5 border-t border-white/10 pt-3 text-xs sm:gap-2 sm:pt-4 sm:text-sm">
+                      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                        <span className="text-white/55">WhatsApp</span>
+                        <span className="min-w-0 break-all text-right font-medium text-white">
+                          {student.whatsapp}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                        <span className="text-white/55">Matrícula</span>
+                        <span className="shrink-0 text-right font-medium text-white">{student.enrollmentDate}</span>
+                      </div>
+                      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                        <span className="text-white/55">Último pagamento</span>
+                        <span className="shrink-0 text-right font-medium text-white">{student.lastPaymentDate}</span>
+                      </div>
+                      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                        <span className="text-white/55">Próximo vencimento</span>
+                        <span className="shrink-0 text-right font-medium text-white">{student.nextDueDate}</span>
+                      </div>
+                      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                        <span className="text-white/55">Mensalidade</span>
+                        <span className="shrink-0 text-right font-medium text-white">{student.monthlyFee}</span>
+                      </div>
+                      {currentStatus === "vencido" ? (
+                        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                          <span className="text-white/55">Dias em atraso</span>
+                          <span className="shrink-0 text-right font-medium text-status-expired">
+                            {overdue} dias
+                          </span>
+                        </div>
+                      ) : null}
+                      {currentStatus === "congelado" ? (
+                        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
+                          <span className="text-white/55">Dias utilizados</span>
+                          <span className="shrink-0 text-right font-medium text-status-frozen">
+                            {student.daysUsed ?? 0} dias
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                  {currentStatus === "congelado" ? (
-                    <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                      <span className="text-white/55">Dias utilizados</span>
-                      <span className="shrink-0 text-right font-medium text-status-frozen">
-                        {student.daysUsed ?? 0} dias
-                      </span>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-2">
+                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); registerPayment(student); }} className="text-xs sm:text-sm">
+                        <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Pagar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); window.open(whatsappLink(student), "_blank", "noopener,noreferrer"); }}
+                        className="text-xs sm:text-sm"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        WhatsApp
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEditModal(student); }} className="text-xs sm:text-sm">
+                        <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Editar
+                      </Button>
+                      {currentStatus === "congelado" ? (
+                        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setResumeTarget(student); }} className="text-xs sm:text-sm">
+                          <Snowflake className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          Retomar
+                        </Button>
+                      ) : (
+                        <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); setFreezeTarget(student); }} className="text-xs sm:text-sm">
+                          <Snowflake className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          Congelar
+                        </Button>
+                      )}
                     </div>
-                  ) : null}
-                </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1 sm:gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => registerPayment(student)} className="text-xs sm:text-sm">
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Pagar
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(whatsappLink(student), "_blank", "noopener,noreferrer")}
-                    className="text-xs sm:text-sm"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    WhatsApp
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => openEditModal(student)} className="text-xs sm:text-sm">
-                    <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Editar
-                  </Button>
-                  {currentStatus === "congelado" ? (
-                    <Button variant="secondary" size="sm" onClick={() => setResumeTarget(student)} className="text-xs sm:text-sm">
-                      <Snowflake className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      Retomar
-                    </Button>
-                  ) : (
-                    <Button variant="secondary" size="sm" onClick={() => setFreezeTarget(student)} className="text-xs sm:text-sm">
-                      <Snowflake className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      Congelar
-                    </Button>
-                  )}
-                </div>
-
-                <div className="flex justify-end pt-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteTarget(student)}
-                    className="w-full border border-white/10 bg-white/5 text-xs text-white hover:bg-white/10 sm:text-sm"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Excluir
-                  </Button>
-                </div>
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(student); }}
+                        className="w-full border border-white/10 bg-white/5 text-xs text-white hover:bg-white/10 sm:text-sm"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Excluir
+                      </Button>
+                    </div>
+                  </>
+                )}
               </Card>
             );
           })}
@@ -489,10 +538,11 @@ export default function AlunosPage() {
       <button
         type="button"
         onClick={openCreateModal}
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full bg-gradient-to-r from-gold-300 to-gold-500 px-4 py-3 text-xs font-semibold text-black shadow-glow transition hover:brightness-110 sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom))] sm:right-[calc(1.25rem+env(safe-area-inset-right))] sm:max-w-[calc(100vw-2.5rem)] sm:px-5 sm:py-4 sm:text-sm"
+        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] inline-flex max-w-[calc(100vw-2rem)] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-gold-300 to-gold-500 px-4 py-3 text-xs font-semibold text-black shadow-glow transition hover:brightness-110 sm:bottom-[calc(1.25rem+env(safe-area-inset-bottom))] sm:right-[calc(1.25rem+env(safe-area-inset-right))] sm:max-w-[calc(100vw-2.5rem)] sm:px-5 sm:py-4 sm:text-sm"
       >
         <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-        Novo Aluno
+        <span className="hidden sm:inline">Novo Aluno</span>
+        <span className="sm:hidden">Novo</span>
       </button>
 
       <Modal
@@ -556,11 +606,25 @@ export default function AlunosPage() {
               setForm((current) => ({ ...current, nextDueDate: event.target.value }))
             }
           />
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="isCompetitor"
+              checked={form.isCompetitor}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, isCompetitor: event.target.checked }))
+              }
+              className="h-4 w-4 rounded border-white/20 bg-black/40 text-gold-300 focus:ring-gold-300/50"
+            />
+            <label htmlFor="isCompetitor" className="text-sm font-medium text-white/80">
+              Atleta Profissional
+            </label>
+          </div>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-            <Button variant="secondary" onClick={() => setIsCreateOpen(false)} className="flex-1">
+            <Button variant="secondary" size="lg" onClick={() => setIsCreateOpen(false)} className="flex-1">
               Cancelar
             </Button>
-            <Button onClick={submitCreate} disabled={!isFormValid} className="flex-1">
+            <Button size="lg" onClick={submitCreate} disabled={!isFormValid} className="flex-1">
               Salvar aluno
             </Button>
           </div>
@@ -624,9 +688,24 @@ export default function AlunosPage() {
               setForm((current) => ({ ...current, nextDueDate: event.target.value }))
             }
           />
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="editIsCompetitor"
+              checked={form.isCompetitor}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, isCompetitor: event.target.checked }))
+              }
+              className="h-4 w-4 rounded border-white/20 bg-black/40 text-gold-300 focus:ring-gold-300/50"
+            />
+            <label htmlFor="editIsCompetitor" className="text-sm font-medium text-white/80">
+              Atleta Profissional
+            </label>
+          </div>
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <Button
               variant="secondary"
+              size="lg"
               onClick={() => {
                 setEditTarget(null);
                 setForm(blankForm);
@@ -635,7 +714,7 @@ export default function AlunosPage() {
             >
               Cancelar
             </Button>
-            <Button onClick={submitEdit} disabled={!isFormValid} className="flex-1">
+            <Button size="lg" onClick={submitEdit} disabled={!isFormValid} className="flex-1">
               Salvar alterações
             </Button>
           </div>

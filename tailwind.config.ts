@@ -24,6 +24,7 @@ const config: Config = {
           active: "#1f7a53",
           expired: "#8e3434",
           frozen: "#355c7d",
+          warning: "#b88718",
         },
       },
       boxShadow: {
