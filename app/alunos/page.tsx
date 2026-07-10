@@ -90,6 +90,14 @@ function parseDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
+function sameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 }
@@ -140,9 +148,21 @@ function overdueDays(student: Student) {
 }
 
 function whatsappLink(student: Student) {
-  const message = encodeURIComponent(
-    `Olá, ${student.name}!\n\nVerificamos que sua mensalidade do CT BODY FIGHT encontra-se vencida.\n\nPedimos que realize o pagamento para manter sua matrícula ativa.\n\nCaso o pagamento já tenha sido efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`,
-  );
+  const dueDate = parseDate(student.nextDueDate);
+  const today = normalizeToday();
+  const isOverdue = computeStatus(student) === "vencido";
+  const isDueToday = dueDate ? sameDay(dueDate, today) : false;
+  const isDueSoon = dueDate ? diffDays(today, dueDate) <= 3 : false;
+
+  let text = `Olá, ${student.name}!\n\nPassando para informar que sua mensalidade do CT BODY FIGHT está vencida.\n\nPedimos que realize o pagamento para manter sua matrícula ativa.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
+
+  if (isDueToday) {
+    text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vence hoje.\n\nPedimos que realize o pagamento dentro do prazo para manter sua matrícula ativa.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
+  } else if (!isOverdue && isDueSoon) {
+    text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vencerá em breve.\n\nPara evitar atraso, pedimos que realize o pagamento até a data do vencimento.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
+  }
+
+  const message = encodeURIComponent(text);
   const digits = student.whatsapp.replace(/\D/g, "");
   return `https://wa.me/55${digits}?text=${message}`;
 }
