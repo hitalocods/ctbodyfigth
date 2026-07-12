@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
+  Ban,
   Edit3,
   MessageCircle,
   Plus,
@@ -161,6 +162,21 @@ function whatsappLink(student: Student) {
   } else if (!isOverdue && isDueSoon) {
     text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vencerá em breve.\n\nPara evitar atraso, pedimos que realize o pagamento até a data do vencimento.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
   }
+
+  const message = encodeURIComponent(text);
+  const digits = student.whatsapp.replace(/\D/g, "");
+  return `https://wa.me/55${digits}?text=${message}`;
+}
+
+function suspensionLink(student: Student) {
+  const text = `Olá, ${student.name}!
+
+Sua matrícula está suspensa no CT BODY FIGHT.
+
+Para regularizar, faça o Pix para ctbodyfight@gmail.com e envie o comprovante.
+
+Obrigado!
+CT BODY FIGHT`;
 
   const message = encodeURIComponent(text);
   const digits = student.whatsapp.replace(/\D/g, "");
@@ -367,12 +383,12 @@ export default function AlunosPage() {
   );
 
   return (
-    <main className="min-h-[100dvh] px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-6xl flex-col">
-        <header className="flex flex-col items-start justify-between gap-3 border-b border-gold-200/10 py-4 sm:flex-row sm:items-center">
+    <main className="min-h-[100dvh] px-4 py-4 sm:px-6 lg:px-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col">
+        <header className="flex flex-col items-start justify-between gap-2 border-b border-gold-200/10 py-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium tracking-[0.3em] text-gold-200/90 sm:text-xs sm:tracking-[0.4em]">CT BODY FIGHT</p>
-            <h1 className="mt-1 text-lg font-semibold text-white sm:mt-2 sm:text-2xl">Alunos</h1>
+            <h1 className="mt-1 text-lg font-semibold text-white sm:mt-2 sm:text-xl lg:text-[1.9rem]">Alunos</h1>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="secondary" size="sm" onClick={() => router.replace("/financeiro")} className="!h-8 !px-3 !py-1 !text-xs flex-1 sm:flex-none">
@@ -384,22 +400,22 @@ export default function AlunosPage() {
           </div>
         </header>
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Card className="p-4">
+        <section className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Card className="p-4 lg:p-3">
             <p className="text-sm text-white/55">Total de alunos</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{totals.total}</p>
+            <p className="mt-2 text-2xl font-semibold text-white lg:text-xl">{totals.total}</p>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 lg:p-3">
             <p className="text-sm text-white/55">Vencidos</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{totals.vencidos}</p>
+            <p className="mt-2 text-2xl font-semibold text-white lg:text-xl">{totals.vencidos}</p>
           </Card>
-          <Card className="p-4">
+          <Card className="p-4 lg:p-3">
             <p className="text-sm text-white/55">Congelados</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{totals.congelados}</p>
+            <p className="mt-2 text-2xl font-semibold text-white lg:text-xl">{totals.congelados}</p>
           </Card>
         </section>
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <section className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
           <Input
             label="Busca"
             placeholder="Buscar aluno..."
@@ -409,7 +425,7 @@ export default function AlunosPage() {
           />
         </section>
 
-        <section className="mt-5 flex flex-wrap gap-2">
+        <section className="mt-4 flex flex-wrap gap-2">
           {filters.map((filter) => {
             const count = filter === "Todos"
               ? totals.total
@@ -424,7 +440,7 @@ export default function AlunosPage() {
                 type="button"
                 onClick={() => setActiveFilter(filter)}
                 className={[
-                  "rounded-full border px-4 py-2 text-sm font-medium transition",
+                  "rounded-full border px-3 py-1.5 text-sm font-medium transition lg:px-3 lg:py-1 lg:text-xs",
                   activeFilter === filter
                     ? "border-gold-300/30 bg-gold-300/12 text-gold-100"
                     : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
@@ -436,7 +452,7 @@ export default function AlunosPage() {
           })}
         </section>
 
-        <section className="mt-6 grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-5 grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
           {filteredStudents.map((student) => {
             const currentStatus = computeStatus(student);
             const overdue = overdueDays(student);
@@ -444,7 +460,7 @@ export default function AlunosPage() {
               <Card
                 key={student.id}
                 statusColor={getCardStatusColor(student)}
-                className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-5 cursor-pointer"
+                className="flex flex-col gap-3 p-4 sm:gap-4 sm:p-5 lg:p-4 cursor-pointer"
                 onClick={() => setExpandedCardId(expandedCardId === student.id ? null : student.id)}
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
@@ -466,26 +482,26 @@ export default function AlunosPage() {
                   <>
                     <div className="grid gap-1.5 border-t border-white/10 pt-3 text-xs sm:gap-2 sm:pt-4 sm:text-sm">
                       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                        <span className="text-white/55">WhatsApp</span>
+                        <span className="text-white/55 lg:text-xs">WhatsApp</span>
                         <span className="min-w-0 break-all text-right font-medium text-white">
                           {student.whatsapp}
                         </span>
                       </div>
                       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                        <span className="text-white/55">Matrícula</span>
-                        <span className="shrink-0 text-right font-medium text-white">{student.enrollmentDate}</span>
+                        <span className="text-white/55 lg:text-xs">Matrícula</span>
+                        <span className="shrink-0 text-right font-medium text-white lg:text-xs">{student.enrollmentDate}</span>
                       </div>
                       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                        <span className="text-white/55">Último pagamento</span>
-                        <span className="shrink-0 text-right font-medium text-white">{student.lastPaymentDate}</span>
+                        <span className="text-white/55 lg:text-xs">Último pagamento</span>
+                        <span className="shrink-0 text-right font-medium text-white lg:text-xs">{student.lastPaymentDate}</span>
                       </div>
                       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                        <span className="text-white/55">Próximo vencimento</span>
-                        <span className="shrink-0 text-right font-medium text-white">{student.nextDueDate}</span>
+                        <span className="text-white/55 lg:text-xs">Próximo vencimento</span>
+                        <span className="shrink-0 text-right font-medium text-white lg:text-xs">{student.nextDueDate}</span>
                       </div>
                       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
-                        <span className="text-white/55">Mensalidade</span>
-                        <span className="shrink-0 text-right font-medium text-white">{student.monthlyFee}</span>
+                        <span className="text-white/55 lg:text-xs">Mensalidade</span>
+                        <span className="shrink-0 text-right font-medium text-white lg:text-xs">{student.monthlyFee}</span>
                       </div>
                       {currentStatus === "vencido" ? (
                         <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-4">
@@ -509,6 +525,15 @@ export default function AlunosPage() {
                       <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); registerPayment(student); }} className="text-xs sm:text-sm">
                         <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Pagar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); window.open(suspensionLink(student), "_blank", "noopener,noreferrer"); }}
+                        className="border-red-400/20 bg-red-500/10 text-xs text-red-100 hover:bg-red-500/15 hover:border-red-300/30 sm:text-sm"
+                      >
+                        <Ban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Suspender
                       </Button>
                       <Button
                         variant="secondary"

@@ -30,11 +30,11 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[100dvh] px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-md flex-col justify-center">
-        <section className="rounded-3xl border border-gold-200/10 bg-white/5 p-4 shadow-glow backdrop-blur-sm sm:p-8">
+      <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col justify-center lg:max-w-md">
+        <section className="rounded-3xl border border-gold-200/10 bg-white/5 p-4 shadow-glow backdrop-blur-sm sm:p-8 lg:p-6">
           <div className="mb-6 text-center sm:mb-8">
             <p className="text-xs font-medium tracking-[0.2em] text-gold-200/90 sm:text-sm sm:tracking-[0.4em]">CT BODY FIGHT</p>
-            <h1 className="mt-2 text-xl font-semibold tracking-tight text-white sm:mt-3 sm:text-3xl">
+            <h1 className="mt-2 text-xl font-semibold tracking-tight text-white sm:mt-3 sm:text-3xl lg:text-2xl">
               Acesso ao sistema
             </h1>
           </div>
