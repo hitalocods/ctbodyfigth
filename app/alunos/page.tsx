@@ -155,10 +155,10 @@ function whatsappLink(student: Student) {
   const isDueToday = dueDate ? sameDay(dueDate, today) : false;
   const isDueSoon = dueDate ? diffDays(today, dueDate) <= 3 : false;
 
-  let text = `Olá, ${student.name}!\n\nPassando para informar que sua mensalidade do CT BODY FIGHT está vencida.\n\nPedimos que realize o pagamento para manter sua matrícula ativa.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
+  let text = `Olá, ${student.name}!\n\nPassando para informar que sua mensalidade do CT BODY FIGHT está vencida.\n\nPara regularizar, faça o Pix para ctbodyfight@gmail.com e envie o comprovante.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
 
   if (isDueToday) {
-    text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vence hoje.\n\nPedimos que realize o pagamento dentro do prazo para manter sua matrícula ativa.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
+    text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vence hoje.\n\nPara pagamento dentro do prazo, faça o Pix para ctbodyfight@gmail.com e envie o comprovante.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
   } else if (!isOverdue && isDueSoon) {
     text = `Olá, ${student.name}!\n\nPassando para lembrar que sua mensalidade do CT BODY FIGHT vencerá em breve.\n\nPara evitar atraso, pedimos que realize o pagamento até a data do vencimento.\n\nSe o pagamento já foi efetuado, por favor desconsidere esta mensagem.\n\nObrigado!\nCT BODY FIGHT`;
   }
