@@ -118,6 +118,21 @@ function normalizeToday() {
   return new Date(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
+function addOneMonthPreservingDay(date: Date): Date {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+  
+  // Set to next month, same day if possible
+  result.setMonth(result.getMonth() + 1);
+  
+  // If the day changed (e.g., Jan 31 -> Mar 3 instead of Feb 31), adjust to last day of previous month
+  if (result.getDate() !== originalDay) {
+    result.setDate(0);
+  }
+  
+  return result;
+}
+
 function computeStatus(student: Student): StudentStatus {
   if (student.status === "congelado") return "congelado";
   const dueDate = parseDate(student.nextDueDate);
@@ -319,7 +334,7 @@ export default function AlunosPage() {
   async function registerPayment(student: Student) {
     const dueDate = parseDate(student.nextDueDate);
     if (!dueDate) return;
-    const nextDue = addDays(dueDate, 30);
+    const nextDue = addOneMonthPreservingDay(dueDate);
     await updateDoc(doc(db, "students", student.id), {
       nextDueDate: formatDate(nextDue),
       status: "ativo",
@@ -348,7 +363,33 @@ export default function AlunosPage() {
 
   async function resumeStudent(student: Student) {
     const remaining = student.frozenDaysRemaining ?? 30;
-    const nextDue = addDays(new Date(), remaining);
+    const today = new Date();
+    const originalDueDate = parseDate(student.nextDueDate);
+    let nextDue: Date;
+
+    if (originalDueDate) {
+      const desiredDay = originalDueDate.getDate();
+      nextDue = new Date(today);
+      nextDue.setDate(desiredDay);
+
+      // If the desired day is in the past (e.g., today is the 20th and desired day is 16th), add a month
+      if (nextDue < today) {
+        nextDue.setMonth(nextDue.getMonth() + 1);
+        // Re-adjust day if adding a month pushed it over (e.g., Jan 31 -> Feb 28/29)
+        if (nextDue.getDate() !== desiredDay) {
+          nextDue.setDate(0);
+        }
+      }
+
+      // If the desired day doesn't exist in the current month (e.g., Feb 31), use last day of the month
+      if (nextDue.getDate() !== desiredDay) {
+        nextDue.setDate(0);
+      }
+    } else {
+      // Fallback if original due date can't be parsed
+      nextDue = addDays(today, remaining);
+    }
+
     await updateDoc(doc(db, "students", student.id), {
       status: "ativo",
       frozenAt: null,
