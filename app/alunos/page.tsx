@@ -14,6 +14,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   Ban,
   Edit3,
+  Flame,
   MessageCircle,
   Plus,
   Search,
@@ -191,6 +192,22 @@ Sua matrícula está suspensa no CT BODY FIGHT.
 Para regularizar, faça o Pix para ctbodyfight@gmail.com e envie o comprovante.
 
 Obrigado!
+CT BODY FIGHT`;
+
+  const message = encodeURIComponent(text);
+  const digits = student.whatsapp.replace(/\D/g, "");
+  return `https://wa.me/55${digits}?text=${message}`;
+}
+
+function absentLink(student: Student) {
+  const text = `Fala, ${student.name}! Tudo bem? 💪
+
+Sentimos sua falta nos treinos ultimamente! Como estão as coisas por aí?
+
+Sabemos que a correria do dia a dia às vezes aperta, mas estamos aqui para te apoiar a manter o foco e o ritmo. Se precisar de algo ou tiver algum imprevisto, conta com a gente! 🥊
+
+Bora voltar aos treinos? Estamos te esperando! 🔥
+
 CT BODY FIGHT`;
 
   const message = encodeURIComponent(text);
@@ -584,6 +601,15 @@ export default function AlunosPage() {
                       >
                         <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         WhatsApp
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); window.open(absentLink(student), "_blank", "noopener,noreferrer"); }}
+                        className="border-amber-400/20 bg-amber-500/10 text-xs text-amber-100 hover:bg-amber-500/15 hover:border-amber-300/30 sm:text-sm"
+                      >
+                        <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+                        Ausente
                       </Button>
                       <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); openEditModal(student); }} className="text-xs sm:text-sm">
                         <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
